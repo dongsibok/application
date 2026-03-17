@@ -211,6 +211,51 @@ h1 {
   white-space: nowrap;
 }
 
+/* 고정신청자 */
+.fixed-passenger-section {
+  margin-bottom: 10px;
+}
+
+.fixed-passenger-label {
+  font-size: 14px;
+  color: #444;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.fixed-passenger-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fixed-btn {
+  padding: 8px 14px;
+  font-size: 15px;
+  border: 2px solid #000000;
+  background: #f0f0f0;
+  color: #000000;
+  cursor: pointer;
+  border-radius: 0;
+  font-family: 'Malgun Gothic', sans-serif;
+}
+
+.fixed-btn:hover {
+  background: #000000;
+  color: #ffffff;
+}
+
+.fixed-btn:focus {
+  outline: 4px solid #000000;
+  outline-offset: 2px;
+}
+
+.fixed-btn-loading {
+  font-size: 14px;
+  color: #666;
+  padding: 8px 0;
+}
+
 /* 고대비 모드 지원 */
 @media (prefers-contrast: high) {
   body {
@@ -240,6 +285,17 @@ h1 {
 
   <form id="applicationForm" novalidate aria-label="이동지원 신청 양식">
     
+    <!-- 고정신청자 -->
+    <div class="form-section">
+      <span class="form-label">고정신청자 빠른 선택</span>
+      <p class="help-text" style="margin-bottom:10px;">버튼을 클릭하면 이름, 연락처, 이용시간이 자동으로 입력됩니다.</p>
+      <div class="fixed-passenger-section">
+        <div id="fixedPassengerButtons" class="fixed-passenger-buttons">
+          <span class="fixed-btn-loading">고정신청자 목록을 불러오는 중...</span>
+        </div>
+      </div>
+    </div>
+
     <!-- 신청자 이름 -->
     <div class="form-section">
       <label for="name" class="form-label">
@@ -441,7 +497,117 @@ contactInput.addEventListener('input', function(e) {
   e.target.value = formatted;
 });
 
-// 현황 확인 함수
+
+// ── 고정신청자 목록 불러오기 ──────────────────────────────
+const fixedContainer = document.getElementById('fixedPassengerButtons');
+
+// 탑승시간 값 → 체크박스 value 매핑
+const TIME_MAP = {
+  '오전': '오전 9시 40분 회기역 - 복지관',
+  '9시': '오전 9시 40분 회기역 - 복지관',
+  '9:40': '오전 9시 40분 회기역 - 복지관',
+  '1시10': '오후 1시 10분 복지관 - 회기역',
+  '1:10': '오후 1시 10분 복지관 - 회기역',
+  '13:10': '오후 1시 10분 복지관 - 회기역',
+  '1시30': '오후 1시 30분 회기역 - 복지관',
+  '1:30': '오후 1시 30분 회기역 - 복지관',
+  '13:30': '오후 1시 30분 회기역 - 복지관',
+  '4시': '오후 4시 복지관 - 회기역',
+  '16:': '오후 4시 복지관 - 회기역',
+  '오후4': '오후 4시 복지관 - 회기역',
+};
+
+function matchTimes(timesStr) {
+  if (!timesStr) return [];
+  const matched = new Set();
+  const str = String(timesStr).replace(/\s/g, '');
+  for (const [key, val] of Object.entries(TIME_MAP)) {
+    if (str.includes(key)) matched.add(val);
+  }
+  // 체크박스 value와 직접 일치 시도
+  const checkboxValues = [
+    '오전 9시 40분 회기역 - 복지관',
+    '오후 1시 10분 복지관 - 회기역',
+    '오후 1시 30분 회기역 - 복지관',
+    '오후 4시 복지관 - 회기역',
+  ];
+  checkboxValues.forEach(v => {
+    if (String(timesStr).includes(v)) matched.add(v);
+  });
+  return Array.from(matched);
+}
+
+function applyFixedPassenger(passenger) {
+  // 이름
+  const nameField = document.getElementById('name');
+  nameField.value = passenger.name;
+  nameField.dispatchEvent(new Event('input'));
+
+  // 연락처
+  const contactField = document.getElementById('contact');
+  const rawContact = String(passenger.contact || '').replace(/[^0-9]/g, '');
+  let formatted = rawContact;
+  if (rawContact.length === 11) {
+    formatted = rawContact.slice(0,3) + '-' + rawContact.slice(3,7) + '-' + rawContact.slice(7);
+  } else if (rawContact.length === 10) {
+    formatted = rawContact.slice(0,3) + '-' + rawContact.slice(3,6) + '-' + rawContact.slice(6);
+  }
+  contactField.value = formatted;
+
+  // 이용시간 체크박스 초기화 후 선택
+  document.querySelectorAll('input[name="boardingLocation"]').forEach(cb => cb.checked = false);
+  const times = matchTimes(passenger.times);
+  times.forEach(t => {
+    document.querySelectorAll('input[name="boardingLocation"]').forEach(cb => {
+      if (cb.value === t) cb.checked = true;
+    });
+  });
+
+  // 현황 갱신
+  checkCount();
+
+  // 유효성 표시 초기화
+  ['name','contact'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.remove('input-error');
+    el.setAttribute('aria-invalid', 'false');
+    const err = document.getElementById(id + 'Error');
+    if (err) err.textContent = '';
+  });
+
+  // 포커스를 날짜 필드로
+  document.getElementById('tripDate').focus();
+}
+
+async function loadFixedPassengers() {
+  try {
+    const url = `${appsScriptUrl}?action=getFixedPassengers`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    fixedContainer.innerHTML = '';
+
+    if (data.result === 'success' && data.data.length > 0) {
+      data.data.forEach(p => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'fixed-btn';
+        btn.textContent = p.name + (p.program ? ` (${p.program})` : '');
+        btn.setAttribute('aria-label', `${p.name} 고정신청자 자동 입력`);
+        btn.addEventListener('click', () => applyFixedPassenger(p));
+        fixedContainer.appendChild(btn);
+      });
+    } else {
+      fixedContainer.innerHTML = '<span class="fixed-btn-loading">등록된 고정신청자가 없습니다.</span>';
+    }
+  } catch (err) {
+    fixedContainer.innerHTML = '<span class="fixed-btn-loading">목록을 불러오지 못했습니다. 새로고침 해주세요.</span>';
+    console.error('고정신청자 로딩 오류:', err);
+  }
+}
+
+loadFixedPassengers();
+
 async function checkCount() {
   const checkboxes = document.querySelectorAll('input[name="boardingLocation"]:checked');
   
