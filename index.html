@@ -145,9 +145,10 @@ h1 {
 
 /* 명단 조회 */
 .roster-section {
-  margin-top: 60px;
-  padding-top: 30px;
-  border-top: 3px solid #000000;
+  margin-top: 20px;
+  margin-bottom: 60px;
+  padding-bottom: 30px;
+  border-bottom: 3px solid #000000;
 }
 
 .roster-title { font-size: 24px; font-weight: bold; margin-bottom: 20px; }
@@ -284,6 +285,26 @@ h1 {
     <p>필수 항목을 모두 입력해주세요. (* 표시는 필수 항목입니다)</p>
   </div>
 
+  <!-- 명단 조회 -->
+  <div class="roster-section" aria-label="탑승 명단 조회">
+    <h2 class="roster-title">🚌 탑승 명단 조회</h2>
+    <div class="roster-controls">
+      <div class="roster-date-wrap">
+        <label for="rosterDate" class="roster-date-label">조회 날짜</label>
+        <input type="date" id="rosterDate" class="date-input" aria-label="명단 조회 날짜 선택">
+      </div>
+      <button type="button" class="roster-btn" onclick="loadRoster()">명단 조회</button>
+    </div>
+    <div id="rosterStatus" class="roster-status" role="status" aria-live="polite"></div>
+    <div id="printArea">
+      <div class="print-header" style="display:none;" id="printHeader"></div>
+      <div id="rosterResult"></div>
+    </div>
+    <div class="print-btn-wrap" id="printBtnWrap" style="display:none;">
+      <button type="button" class="print-btn" onclick="doPrint()">🖨️ 인쇄 / PDF 저장</button>
+    </div>
+  </div>
+
   <form id="applicationForm" novalidate aria-label="이동지원 신청 양식">
     
     <!-- 신청자 이름 -->
@@ -374,26 +395,6 @@ h1 {
     <p id="submitHelp" class="sr-only">양식을 제출하려면 신청하기 버튼을 누르거나 엔터 키를 누르세요.</p>
   </form>
 
-  <!-- 명단 조회 -->
-  <div class="roster-section" aria-label="탑승 명단 조회">
-    <h2 class="roster-title">🚌 탑승 명단 조회</h2>
-    <div class="roster-controls">
-      <div class="roster-date-wrap">
-        <label for="rosterDate" class="roster-date-label">조회 날짜</label>
-        <input type="date" id="rosterDate" class="date-input" aria-label="명단 조회 날짜 선택">
-      </div>
-      <button type="button" class="roster-btn" onclick="loadRoster()">명단 조회</button>
-    </div>
-    <div id="rosterStatus" class="roster-status" role="status" aria-live="polite"></div>
-    <div id="printArea">
-      <div class="print-header" style="display:none;" id="printHeader"></div>
-      <div id="rosterResult"></div>
-    </div>
-    <div class="print-btn-wrap" id="printBtnWrap" style="display:none;">
-      <button type="button" class="print-btn" onclick="doPrint()">🖨️ 인쇄 / PDF 저장</button>
-    </div>
-  </div>
-
   <!-- 성공 메시지 -->
   <div id="successMessage" class="success-message hidden"
     role="status" aria-live="assertive" aria-atomic="true">
@@ -404,7 +405,7 @@ h1 {
 </div>
 
 <script>
-const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbw7ZNX2xI8UN7DOeBIkRe_QJLh0Sd9AvK3zvm34MPVHhfDaO0fB6z0R5ek7h_vvN2NGyA/exec';
+const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbxAACDVksZ_RK6FkPHedXSyBswQh9tVhxS-4VDmvHIoioygHT76P30LPP5Rom1PgBOZaw/exec';
 
 const form = document.getElementById('applicationForm');
 const submitBtn = document.getElementById('submitBtn');
@@ -484,7 +485,7 @@ async function loadRoster() {
         list.forEach((p, i) => {
           html += `<tr><td>${i+1}</td><td>${p.name}</td><td>${p.contact}</td></tr>`;
         });
-        html += `</tbody></table><div class="roster-total">총 ${list.length}명 / 최대 9명</div>`;
+        html += `</tbody></table><div class="roster-total">총 ${list.length}명</div>`;
         totalCount += list.length;
       }
       html += `</div>`;
@@ -536,15 +537,12 @@ async function checkCount() {
     results.forEach((data, i) => {
       const location = checkboxes[i].value;
       if (data.result === 'success') {
-        const cur = data.count, max = 9, rem = max - cur;
-        if (cur >= max) { parts.push(`${location} 시간은 정원이 마감되었습니다.`); anyFull = true; }
-        else parts.push(`${location} 시간은 현재 ${cur}명 신청 완료, 잔여 ${rem}석입니다.`);
+        const cur = data.count;
+        parts.push(`${location} 시간은 현재 ${cur}명 신청했습니다.`);
       }
     });
 
     countDisplay.textContent = parts.join(' ');
-    if (anyFull) { submitBtn.disabled = true; submitBtn.setAttribute('aria-disabled','true'); }
-    else { submitBtn.disabled = false; submitBtn.removeAttribute('aria-disabled'); }
   } catch (err) {
     countDisplay.textContent = '네트워크 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
     console.error('Error:', err);
