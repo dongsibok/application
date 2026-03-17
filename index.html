@@ -256,6 +256,120 @@ h1 {
   padding: 8px 0;
 }
 
+/* 명단 조회 */
+.roster-section {
+  margin-top: 60px;
+  padding-top: 30px;
+  border-top: 3px solid #000000;
+}
+
+.roster-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.roster-controls {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.roster-date-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 180px;
+}
+
+.roster-date-label {
+  font-size: 15px;
+  font-weight: bold;
+}
+
+.roster-btn {
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: bold;
+  border: 2px solid #000000;
+  background: #000000;
+  color: #ffffff;
+  cursor: pointer;
+  font-family: 'Malgun Gothic', sans-serif;
+  white-space: nowrap;
+}
+
+.roster-btn:hover {
+  background: #333333;
+}
+
+.roster-btn:focus {
+  outline: 4px solid #000000;
+  outline-offset: 2px;
+}
+
+.roster-status {
+  font-size: 15px;
+  color: #555;
+  margin-bottom: 12px;
+  min-height: 22px;
+}
+
+.roster-time-group {
+  margin-bottom: 28px;
+}
+
+.roster-time-title {
+  font-size: 17px;
+  font-weight: bold;
+  padding: 10px 14px;
+  background: #000000;
+  color: #ffffff;
+  margin-bottom: 0;
+}
+
+.roster-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+
+.roster-table th {
+  background: #f0f0f0;
+  border: 1px solid #999;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: bold;
+}
+
+.roster-table td {
+  border: 1px solid #ccc;
+  padding: 10px 12px;
+  vertical-align: middle;
+}
+
+.roster-table tr:nth-child(even) td {
+  background: #fafafa;
+}
+
+.roster-empty {
+  padding: 16px;
+  border: 1px solid #ccc;
+  color: #666;
+  font-size: 15px;
+  text-align: center;
+}
+
+.roster-total {
+  font-size: 14px;
+  color: #444;
+  margin-top: 6px;
+  text-align: right;
+}
+
 /* 고대비 모드 지원 */
 @media (prefers-contrast: high) {
   body {
@@ -455,6 +569,20 @@ h1 {
 
   </form>
 
+  <!-- 명단 조회 -->
+  <div class="roster-section" aria-label="탑승 명단 조회">
+    <h2 class="roster-title">🚌 탑승 명단 조회</h2>
+    <div class="roster-controls">
+      <div class="roster-date-wrap">
+        <label for="rosterDate" class="roster-date-label">조회 날짜</label>
+        <input type="date" id="rosterDate" class="date-input" aria-label="명단 조회 날짜 선택">
+      </div>
+      <button type="button" class="roster-btn" onclick="loadRoster()">명단 조회</button>
+    </div>
+    <div id="rosterStatus" class="roster-status" role="status" aria-live="polite"></div>
+    <div id="rosterResult"></div>
+  </div>
+
   <!-- 성공 메시지 -->
   <div 
     id="successMessage" 
@@ -470,7 +598,7 @@ h1 {
 </div>
 
 <script>
-const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbzsPbUZACQh7ALJdJGgDxrrjvHfHJpNI2Zy3HA1jxB-6BhhfWWg93N8h-ZRLKsBi--lJQ/exec';
+const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbwrld0XPc0Zun1QhGyfWz1vm5XQ31tu93Sbb9leXJ96GOYom7LP06OwCfWXIicG1tnKHA/exec';
 
 const form = document.getElementById('applicationForm');
 const submitBtn = document.getElementById('submitBtn');
@@ -607,6 +735,92 @@ async function loadFixedPassengers() {
 }
 
 loadFixedPassengers();
+
+// ── 명단 조회 ──────────────────────────────────────────────
+const TIME_ORDER = [
+  '오전 9시 40분 회기역 - 복지관',
+  '오후 1시 10분 복지관 - 회기역',
+  '오후 1시 30분 회기역 - 복지관',
+  '오후 4시 복지관 - 회기역',
+];
+
+// 오늘 날짜를 기본값으로 설정
+document.getElementById('rosterDate').value = new Date().toISOString().split('T')[0];
+
+async function loadRoster() {
+  const dateInput = document.getElementById('rosterDate');
+  const statusEl = document.getElementById('rosterStatus');
+  const resultEl = document.getElementById('rosterResult');
+
+  if (!dateInput.value) {
+    statusEl.textContent = '날짜를 선택해주세요.';
+    return;
+  }
+
+  statusEl.textContent = '명단을 불러오는 중입니다...';
+  resultEl.innerHTML = '';
+
+  try {
+    const url = `${appsScriptUrl}?action=getRoster&date=${dateInput.value}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (data.result !== 'success') {
+      statusEl.textContent = '명단을 불러오지 못했습니다. 다시 시도해주세요.';
+      return;
+    }
+
+    const rows = data.data; // [{name, contact, location}, ...]
+    const dateLabel = dateInput.value.replace(/-/g, '.');
+
+    if (!rows || rows.length === 0) {
+      statusEl.textContent = `${dateLabel} 신청자가 없습니다.`;
+      return;
+    }
+
+    // 시간대별 그룹핑
+    const groups = {};
+    TIME_ORDER.forEach(t => { groups[t] = []; });
+
+    rows.forEach(row => {
+      const loc = row.location;
+      if (!groups[loc]) groups[loc] = [];
+      groups[loc].push(row);
+    });
+
+    let html = '';
+    let totalCount = 0;
+
+    TIME_ORDER.forEach(time => {
+      const list = groups[time] || [];
+      html += `<div class="roster-time-group">`;
+      html += `<div class="roster-time-title">${time} · ${list.length}명</div>`;
+
+      if (list.length === 0) {
+        html += `<div class="roster-empty">신청자 없음</div>`;
+      } else {
+        html += `<table class="roster-table" aria-label="${time} 탑승 명단">`;
+        html += `<thead><tr><th>번호</th><th>이름</th><th>연락처</th></tr></thead><tbody>`;
+        list.forEach((p, i) => {
+          html += `<tr><td>${i + 1}</td><td>${p.name}</td><td>${p.contact}</td></tr>`;
+        });
+        html += `</tbody></table>`;
+        html += `<div class="roster-total">총 ${list.length}명 / 최대 9명</div>`;
+        totalCount += list.length;
+      }
+
+      html += `</div>`;
+    });
+
+    statusEl.textContent = `${dateLabel} 전체 신청자 ${totalCount}명`;
+    resultEl.innerHTML = html;
+
+  } catch (err) {
+    statusEl.textContent = '네트워크 오류가 발생했습니다. 다시 시도해주세요.';
+    console.error('명단 조회 오류:', err);
+  }
+}
+
 
 async function checkCount() {
   const checkboxes = document.querySelectorAll('input[name="boardingLocation"]:checked');
