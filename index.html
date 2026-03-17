@@ -193,39 +193,39 @@ h1 {
   min-height: 22px;
 }
 
-.roster-time-group { margin-bottom: 28px; }
+.roster-time-group { margin-bottom: 16px; }
 
 .roster-time-title {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: bold;
-  padding: 10px 14px;
+  padding: 6px 10px;
   background: #000000;
   color: #ffffff;
   margin-bottom: 0;
 }
 
-.roster-table { width: 100%; border-collapse: collapse; font-size: 15px; }
-
-.roster-table th {
-  background: #f0f0f0;
-  border: 1px solid #999;
-  padding: 10px 12px;
-  text-align: left;
-  font-weight: bold;
+.roster-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.roster-table td { border: 1px solid #ccc; padding: 10px 12px; vertical-align: middle; }
-.roster-table tr:nth-child(even) td { background: #fafafa; }
+.roster-list li {
+  font-size: 14px;
+  padding: 3px 10px;
+  border-bottom: 1px solid #eeeeee;
+  line-height: 1.4;
+}
+
+.roster-list li:last-child { border-bottom: none; }
 
 .roster-empty {
-  padding: 16px;
-  border: 1px solid #ccc;
+  padding: 6px 10px;
   color: #666;
-  font-size: 15px;
-  text-align: center;
+  font-size: 14px;
 }
 
-.roster-total { font-size: 14px; color: #444; margin-top: 6px; text-align: right; }
+.roster-total { font-size: 13px; color: #444; padding: 2px 10px; text-align: right; }
 
 .print-btn-wrap { margin-top: 16px; display: flex; gap: 12px; }
 
@@ -245,27 +245,38 @@ h1 {
 
 /* 인쇄 스타일 */
 @media print {
-  body * { visibility: hidden; }
-  #printArea, #printArea * { visibility: visible; }
-  #printArea {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    padding: 16px;
+  @page {
+    margin: 10mm;
+    size: A4 portrait;
   }
+  html, body {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+  /* 신청 폼 전체 숨김 — body에 height가 남지 않도록 */
+  body > * { display: none !important; }
+  body > .container { display: block !important; }
+  .container > * { display: none !important; }
+  .container > .roster-section { display: block !important; }
+  .roster-section > * { display: none !important; }
+  #printArea { display: block !important; }
+  #printArea * { display: revert; }
+  /* 인쇄 헤더 */
   .print-header {
     display: block !important;
-    visibility: visible !important;
-    font-size: 20px;
+    font-size: 16px;
     font-weight: bold;
-    margin-bottom: 16px;
+    margin-bottom: 10px;
     border-bottom: 2px solid #000;
-    padding-bottom: 8px;
+    padding-bottom: 6px;
   }
-  .roster-time-group {
-    margin-bottom: 16px;
-  }
+  /* 신청자 없는 시간대 숨김 */
+  .roster-time-group.empty-group { display: none !important; }
+  .roster-time-group { margin-bottom: 10px; }
+  .roster-time-title { padding: 4px 8px; font-size: 13px; }
+  .roster-total { padding: 1px 6px; }
+  .print-btn-wrap { display: none !important; }
 }
 
 @media (prefers-contrast: high) {
@@ -351,26 +362,26 @@ h1 {
           <label class="checkbox-item">
             <input type="checkbox" name="boardingLocation"
               value="오전 9시 40분 회기역 - 복지관"
-              aria-label="오전 9시 40분 회기역(정원 16명)">
-            <span class="checkbox-label-text">오전 9시 40분 회기역(정원 16명)</span>
+              aria-label="오전 9시 40분 회기역에서 복지관">
+            <span class="checkbox-label-text">오전 9시 40분 회기역에서 복지관</span>
           </label>
           <label class="checkbox-item">
             <input type="checkbox" name="boardingLocation"
               value="오후 1시 10분 복지관 - 회기역"
-              aria-label="오후 1시 10분 복지관(정원 16명)">
-            <span class="checkbox-label-text">오후 1시 10분 복지관(정원 16명)</span>
+              aria-label="오후 1시 10분 복지관에서 회기역">
+            <span class="checkbox-label-text">오후 1시 10분 복지관에서 회기역</span>
           </label>
           <label class="checkbox-item">
             <input type="checkbox" name="boardingLocation"
               value="오후 1시 30분 회기역 - 복지관"
-              aria-label="오후 1시 30분 회기역(정원 16명)">
-            <span class="checkbox-label-text">오후 1시 30분 회기역(정원 16명)</span>
+              aria-label="오후 1시 30분 회기역에서 복지관">
+            <span class="checkbox-label-text">오후 1시 30분 회기역에서 복지관</span>
           </label>
           <label class="checkbox-item">
             <input type="checkbox" name="boardingLocation"
               value="오후 4시 복지관 - 회기역"
-              aria-label="오후 4시 복지관(정원 16명)">
-            <span class="checkbox-label-text">오후 4시 복지관(정원 16명)</span>
+              aria-label="오후 4시 복지관에서 회기역">
+            <span class="checkbox-label-text">오후 4시 복지관에서 회기역</span>
           </label>
         </div>
         <span id="boardingError" class="error-message" role="alert" aria-live="polite"></span>
@@ -476,16 +487,17 @@ async function loadRoster() {
 
     TIME_ORDER.forEach(time => {
       const list = groups[time] || [];
-      html += `<div class="roster-time-group">`;
+      const emptyClass = list.length === 0 ? ' empty-group' : '';
+      html += `<div class="roster-time-group${emptyClass}">`;
       html += `<div class="roster-time-title">${time} · ${list.length}명</div>`;
       if (list.length === 0) {
         html += `<div class="roster-empty">신청자 없음</div>`;
       } else {
-        html += `<table class="roster-table"><thead><tr><th>번호</th><th>이름</th><th>연락처</th></tr></thead><tbody>`;
+        html += `<ul class="roster-list">`;
         list.forEach((p, i) => {
-          html += `<tr><td>${i+1}</td><td>${p.name}</td><td>${p.contact}</td></tr>`;
+          html += `<li>${i+1}. ${p.name} · ${p.contact}</li>`;
         });
-        html += `</tbody></table><div class="roster-total">총 ${list.length}명</div>`;
+        html += `</ul><div class="roster-total">총 ${list.length}명</div>`;
         totalCount += list.length;
       }
       html += `</div>`;
