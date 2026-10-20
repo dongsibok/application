@@ -143,22 +143,49 @@ h1 {
   white-space: nowrap;
 }
 
-/* 명단 조회 */
+/* 명단 조회 (앱 하단 배치 레이아웃) */
 .roster-section {
-  margin-top: 20px;
-  margin-bottom: 60px;
+  margin-top: 50px;
+  padding-top: 30px;
   padding-bottom: 30px;
-  border-bottom: 3px solid #000000;
+  border-top: 3px solid #000000;
 }
 
 .roster-title { font-size: 24px; font-weight: bold; margin-bottom: 20px; }
 
 .roster-controls {
   display: flex;
+  flex-direction: column;
   gap: 12px;
-  align-items: flex-end;
   margin-bottom: 20px;
+}
+
+.roster-quick-btns {
+  display: flex;
+  gap: 8px;
   flex-wrap: wrap;
+}
+
+.quick-date-btn {
+  padding: 10px 16px;
+  font-size: 15px;
+  font-weight: bold;
+  border: 2px solid #000000;
+  background: #ffffff;
+  color: #000000;
+  cursor: pointer;
+  font-family: 'Malgun Gothic', sans-serif;
+}
+
+.quick-date-btn.active, .quick-date-btn:hover {
+  background: #000000;
+  color: #ffffff;
+}
+
+.roster-date-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 .roster-date-wrap {
@@ -166,7 +193,6 @@ h1 {
   flex-direction: column;
   gap: 6px;
   flex: 1;
-  min-width: 180px;
 }
 
 .roster-date-label { font-size: 15px; font-weight: bold; }
@@ -254,7 +280,6 @@ h1 {
     min-height: 0 !important;
     overflow: visible !important;
   }
-  /* 신청 폼 전체 숨김 — body에 height가 남지 않도록 */
   body > * { display: none !important; }
   body > .container { display: block !important; }
   .container > * { display: none !important; }
@@ -262,7 +287,6 @@ h1 {
   .roster-section > * { display: none !important; }
   #printArea { display: block !important; }
   #printArea * { display: revert; }
-  /* 인쇄 헤더 */
   .print-header {
     display: block !important;
     font-size: 16px;
@@ -271,7 +295,6 @@ h1 {
     border-bottom: 2px solid #000;
     padding-bottom: 6px;
   }
-  /* 신청자 없는 시간대 숨김 */
   .roster-time-group.empty-group { display: none !important; }
   .roster-time-group { margin-bottom: 10px; }
   .roster-time-title { padding: 4px 8px; font-size: 13px; }
@@ -296,29 +319,21 @@ h1 {
     <p>필수 항목을 모두 입력해주세요. (* 표시는 필수 항목입니다)</p>
   </div>
 
-  <!-- 명단 조회 -->
-  <div class="roster-section" aria-label="탑승 명단 조회">
-    <h2 class="roster-title">🚌 탑승 명단 조회</h2>
-    <div class="roster-controls">
-      <div class="roster-date-wrap">
-        <label for="rosterDate" class="roster-date-label">조회 날짜</label>
-        <input type="date" id="rosterDate" class="date-input" aria-label="명단 조회 날짜 선택">
-      </div>
-      <button type="button" class="roster-btn" onclick="loadRoster()">명단 조회</button>
-    </div>
-    <div id="rosterStatus" class="roster-status" role="status" aria-live="polite"></div>
-    <div id="printArea">
-      <div class="print-header" style="display:none;" id="printHeader"></div>
-      <div id="rosterResult"></div>
-    </div>
-    <div class="print-btn-wrap" id="printBtnWrap" style="display:none;">
-      <button type="button" class="print-btn" onclick="doPrint()">🖨️ 인쇄 / PDF 저장</button>
-    </div>
-  </div>
-
+  <!-- 이동지원 신청 양식 -->
   <form id="applicationForm" novalidate aria-label="이동지원 신청 양식">
     
-    <!-- 신청자 이름 -->
+    <!-- 1. 탑승 날짜 -->
+    <div class="form-section">
+      <label for="tripDate" class="form-label">
+        탑승 날짜 <span class="required-mark" aria-label="필수">*</span>
+      </label>
+      <input id="tripDate" name="tripDate" type="date" class="date-input"
+        required aria-required="true" aria-describedby="tripDateHelp tripDateError">
+      <p id="tripDateHelp" class="help-text">이동지원을 이용하실 날짜를 선택해주세요.</p>
+      <span id="tripDateError" class="error-message" role="alert" aria-live="polite"></span>
+    </div>
+
+    <!-- 2. 신청자 이름 -->
     <div class="form-section">
       <label for="name" class="form-label">
         신청자 이름 <span class="required-mark" aria-label="필수">*</span>
@@ -328,27 +343,17 @@ h1 {
       <span id="nameError" class="error-message" role="alert" aria-live="polite"></span>
     </div>
 
-    <!-- 연락처 -->
+    <!-- 3. 연락처 또는 프로그램명 -->
     <div class="form-section">
       <label for="contact" class="form-label">
-        연락처 <span class="required-mark" aria-label="필수">*</span>
+        연락처 또는 프로그램명 <span class="required-mark" aria-label="필수">*</span>
       </label>
-      <input id="contact" name="contact" type="tel" inputmode="numeric"
-        class="form-input" maxlength="13" required aria-required="true"
+      <input id="contact" name="contact" type="text"
+        class="form-input" maxlength="50" required aria-required="true"
+        placeholder="예: 010-1234-5678 또는 점자교실"
         aria-describedby="contactHelp contactError">
-      <p id="contactHelp" class="help-text">전화번호를 입력하세요. 숫자만 입력하시면 자동으로 하이픈이 추가됩니다.</p>
+      <p id="contactHelp" class="help-text">연락처(전화번호) 또는 참여하시는 프로그램명을 입력해주세요.</p>
       <span id="contactError" class="error-message" role="alert" aria-live="polite"></span>
-    </div>
-
-    <!-- 탑승 날짜 -->
-    <div class="form-section">
-      <label for="tripDate" class="form-label">
-        탑승 날짜 <span class="required-mark" aria-label="필수">*</span>
-      </label>
-      <input id="tripDate" name="tripDate" type="date" class="date-input"
-        required aria-required="true" aria-describedby="tripDateHelp tripDateError">
-      <p id="tripDateHelp" class="help-text">이동지원을 이용하실 날짜를 선택해주세요.</p>
-      <span id="tripDateError" class="error-message" role="alert" aria-live="polite"></span>
     </div>
 
     <!-- 이용 시간 -->
@@ -413,10 +418,39 @@ h1 {
     <p class="success-text">이동지원 신청이 정상적으로 접수되었습니다. 감사합니다.</p>
   </div>
 
+  <!-- 명단 조회 (앱 하단) -->
+  <div class="roster-section" aria-label="탑승 명단 조회">
+    <h2 class="roster-title">🚌 탑승 명단 조회</h2>
+    <div class="roster-controls">
+      <!-- 빠른 날짜 선택 버튼 -->
+      <div class="roster-quick-btns" id="quickDateBtns">
+        <button type="button" class="quick-date-btn active" data-offset="0" onclick="selectQuickDate(0, this)">오늘</button>
+        <button type="button" class="quick-date-btn" data-offset="1" onclick="selectQuickDate(1, this)">내일</button>
+        <button type="button" class="quick-date-btn" data-offset="2" onclick="selectQuickDate(2, this)">모레</button>
+      </div>
+      <!-- 직접 날짜 선택 및 조회 버튼 -->
+      <div class="roster-date-row">
+        <div class="roster-date-wrap">
+          <label for="rosterDate" class="sr-only">조회 날짜 직접 선택</label>
+          <input type="date" id="rosterDate" class="date-input" aria-label="명단 조회 날짜 선택" onchange="clearQuickDateSelection()">
+        </div>
+        <button type="button" class="roster-btn" onclick="loadRoster()">명단 조회</button>
+      </div>
+    </div>
+    <div id="rosterStatus" class="roster-status" role="status" aria-live="polite"></div>
+    <div id="printArea">
+      <div class="print-header" style="display:none;" id="printHeader"></div>
+      <div id="rosterResult"></div>
+    </div>
+    <div class="print-btn-wrap" id="printBtnWrap" style="display:none;">
+      <button type="button" class="print-btn" onclick="doPrint()">🖨️ 인쇄 / PDF 저장</button>
+    </div>
+  </div>
+
 </div>
 
 <script>
-const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbw7ZNX2xI8UN7DOeBIkRe_QJLh0Sd9AvK3zvm34MPVHhfDaO0fB6z0R5ek7h_vvN2NGyA/exec';
+const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbw6Nxvyv9WNDY05cohjVosQ8sepP8GjVTE7_rLNGquEA5yEIdnzp-WJQUT3Czg3ngI14Q/exec';
 
 const form = document.getElementById('applicationForm');
 const submitBtn = document.getElementById('submitBtn');
@@ -427,15 +461,17 @@ const contactInput = document.getElementById('contact');
 tripDate.min = new Date().toISOString().split('T')[0];
 
 contactInput.addEventListener('input', function(e) {
-  let value = e.target.value.replace(/[^0-9]/g, '');
-  let formatted = '';
-  if (value.length <= 3) formatted = value;
-  else if (value.length <= 7) formatted = value.slice(0,3) + '-' + value.slice(3);
-  else formatted = value.slice(0,3) + '-' + value.slice(3,7) + '-' + value.slice(7,11);
-  e.target.value = formatted;
+  let val = e.target.value;
+  if (/^[0-9]+$/.test(val)) {
+    let formatted = '';
+    if (val.length <= 3) formatted = val;
+    else if (val.length <= 7) formatted = val.slice(0,3) + '-' + val.slice(3);
+    else formatted = val.slice(0,3) + '-' + val.slice(3,7) + '-' + val.slice(7,11);
+    e.target.value = formatted;
+  }
 });
 
-// ── 명단 조회 ──────────────────────────────────────────────
+// ── 명단 조회 ─────────────────────────
 const TIME_ORDER = [
   '오전 9시 40분 회기역 - 복지관',
   '오후 1시 10분 복지관 - 회기역',
@@ -443,7 +479,28 @@ const TIME_ORDER = [
   '오후 4시 복지관 - 회기역',
 ];
 
-document.getElementById('rosterDate').value = new Date().toISOString().split('T')[0];
+function initRosterDate() {
+  const today = new Date();
+  document.getElementById('rosterDate').value = today.toISOString().split('T')[0];
+  loadRoster();
+}
+
+function selectQuickDate(offset, btnElement) {
+  document.querySelectorAll('.quick-date-btn').forEach(btn => btn.classList.remove('active'));
+  btnElement.classList.add('active');
+
+  const targetDate = new Date();
+  targetDate.setDate(targetDate.getDate() + offset);
+  document.getElementById('rosterDate').value = targetDate.toISOString().split('T')[0];
+  
+  loadRoster();
+}
+
+function clearQuickDateSelection() {
+  document.querySelectorAll('.quick-date-btn').forEach(btn => btn.classList.remove('active'));
+}
+
+window.addEventListener('DOMContentLoaded', initRosterDate);
 
 async function loadRoster() {
   const dateInput = document.getElementById('rosterDate');
@@ -514,7 +571,7 @@ async function loadRoster() {
   }
 }
 
-// ── 인쇄 / PDF : afterprint 이벤트로 헤더 복원 ──────────────
+// ── 인쇄 / PDF ──────────────
 function doPrint() {
   const header = document.getElementById('printHeader');
   header.style.display = 'block';
@@ -544,7 +601,6 @@ async function checkCount() {
     });
     const results = await Promise.all(promises);
     let parts = [];
-    let anyFull = false;
 
     results.forEach((data, i) => {
       const location = checkboxes[i].value;
@@ -582,15 +638,7 @@ function validateField(field, showError = true) {
   if (field.hasAttribute('required') && !field.value.trim()) {
     isValid = false;
     const label = document.querySelector(`label[for="${field.id}"]`)?.textContent.replace('*','').trim();
-    errorMessage = `${label}을 입력해주세요.`;
-  }
-
-  if (field.id === 'contact' && field.value) {
-    const phoneRegex = /^01[0-9]-?[0-9]{3,4}-?[0-9]{4}$/;
-    if (!phoneRegex.test(field.value.replace(/-/g,''))) {
-      isValid = false;
-      errorMessage = '올바른 전화번호 형식이 아닙니다. 010-1234-5678 형식으로 입력해주세요.';
-    }
+    errorMessage = `${label}을(를) 입력해주세요.`;
   }
 
   if (showError) {
@@ -601,31 +649,44 @@ function validateField(field, showError = true) {
   return isValid;
 }
 
-document.querySelectorAll('#name, #contact, #tripDate').forEach(field => {
+document.querySelectorAll('#tripDate, #name, #contact').forEach(field => {
   field.addEventListener('blur', () => validateField(field));
 });
 
+// ── 신청서 제출 (JSON 및 text/plain 헤더 적용으로 저장 오류 차단) ──────────────
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
+  
+  document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
+  document.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+
   let isFormValid = true;
 
-  if (!validateField(document.getElementById('name'))) isFormValid = false;
-  if (!validateField(document.getElementById('contact'))) isFormValid = false;
-  if (!validateField(document.getElementById('tripDate'))) isFormValid = false;
+  const tripDateEl = document.getElementById('tripDate');
+  const nameEl = document.getElementById('name');
+  const contactEl = document.getElementById('contact');
+  const notesEl = document.getElementById('notes');
+  const boardingError = document.getElementById('boardingError');
+
+  if (!validateField(tripDateEl)) isFormValid = false;
+  if (!validateField(nameEl)) isFormValid = false;
+  if (!validateField(contactEl)) isFormValid = false;
 
   const checkboxes = document.querySelectorAll('input[name="boardingLocation"]:checked');
-  const boardingError = document.getElementById('boardingError');
   if (checkboxes.length === 0) {
     isFormValid = false;
-    if (boardingError) boardingError.textContent = '이용 시간을 최소 하나 이상 선택해주세요.';
+    boardingError.textContent = '이용 시간을 최소 하나 이상 선택해주세요.';
   } else {
-    if (boardingError) boardingError.textContent = '';
+    boardingError.textContent = '';
   }
 
   if (!isFormValid) {
-    alert('필수 입력 사항을 모두 입력해주세요.');
     const firstError = form.querySelector('.input-error');
-    if (firstError) firstError.focus();
+    if (firstError) {
+      firstError.focus();
+    } else if (checkboxes.length === 0) {
+      document.querySelector('input[name="boardingLocation"]').focus();
+    }
     return;
   }
 
@@ -634,12 +695,21 @@ form.addEventListener('submit', async (e) => {
   submitBtn.setAttribute('aria-busy', 'true');
 
   try {
-    const formData = new FormData(form);
-    const selectedLocations = Array.from(checkboxes).map(cb => cb.value);
-    formData.delete('boardingLocation');
-    formData.append('boardingLocation', selectedLocations.join(', '));
+    // JSON 페이로드 구성
+    const payload = {
+      tripDate: tripDateEl.value,
+      name: nameEl.value,
+      contact: contactEl.value,
+      boardingLocation: Array.from(checkboxes).map(cb => cb.value).join(', '),
+      notes: notesEl.value
+    };
 
-    const res = await fetch(appsScriptUrl, { method: 'POST', body: formData });
+    const res = await fetch(appsScriptUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    
     const data = await res.json();
 
     if (data.result === 'success') {
@@ -648,9 +718,8 @@ form.addEventListener('submit', async (e) => {
       const successMsg = document.getElementById('successMessage');
       successMsg.classList.remove('hidden');
       successMsg.focus();
-      setTimeout(() => { alert('신청이 완료되었습니다.'); }, 500);
     } else {
-      alert(data.message || '신청에 실패했습니다. 다시 시도해주세요.');
+      alert('저장 실패: ' + (data.message || '알 수 없는 오류가 발생했습니다.'));
       submitBtn.disabled = false;
       submitBtn.textContent = '신청하기';
       submitBtn.setAttribute('aria-busy', 'false');
